@@ -1,0 +1,289 @@
+<html>
+<style>
+    .board {
+        border-width: 2px;
+        border-style: solid;
+        border-color: blue;
+        padding: 2px;
+        margin: auto;
+        width: 100%;
+    }
+
+    .userinput {
+        width: 200px;
+        height: 50px;
+        border-color: blue;
+        border-radius: 5px;
+        margin-top: 10px;
+        margin-right: 20px;
+        font-size: 20px;
+        padding: 3px;
+    }
+
+    .center {
+        margin: auto;
+        width: 80%;
+    }
+
+    .toolbar {
+        text-align: center;
+    }
+
+    .stop {
+        background: linear-gradient(to bottom, #c62d1f 5%, #f24437 100%);
+        background-color: #c62d1f;
+        border: 1px solid #d02718;
+    }
+
+    .stop:hover {
+        background: linear-gradient(to bottom, #f24437 5%, #c62d1f 100%);
+        background-color: #f24437;
+    }
+
+    .start {
+        background: linear-gradient(to bottom, #44c767 5%, #5cbf2a 100%);
+        background-color: #44c767;
+        border: 1px solid #18ab29;
+    }
+
+    .start:hover {
+        background: linear-gradient(to bottom, #5cbf2a 5%, #44c767 100%);
+        background-color: #18ab29;
+    }
+
+    .resetbutton {
+        border-radius: 4px;
+        display: inline-block;
+        cursor: pointer;
+        color: #ffffff;
+        font-family: Arial;
+        font-size: 17px;
+        padding: 16px 31px;
+        text-decoration: none;
+    }
+
+    .resetbutton:active {
+        position: relative;
+        top: 1px;
+    }
+</style>
+
+<body>
+    <div class="center">
+        <canvas class="board" id="myCanvas"></canvas>
+        <div class="toolbar">
+            <input class="userinput" id="myInput" autofocus></input>
+            <a id="resetbutton" href="#" class="resetbutton start" onclick="reset()" disabled>Start</a>
+            <span id="statstext">C:0 M:0</span>
+        </div>
+    </div>
+
+
+    <script>
+
+        const fillcolor = "#333";
+        const textcolor1 = "#fff";
+        var pos = 0;
+
+        var frameTime = 0
+        var started = false;
+        var finished = false;
+        var timer = null;
+        var runningTexts = {}
+        var caughtTexts = {}
+        var missedTexts = {}
+        var usedTexts = []
+
+        function initGame() {
+            runningTexts = {}
+            caughtTexts = {}
+            missedTexts = {}
+            usedTexts = []
+            frameTime = 0
+            finished = false;
+            updateStats()
+        }
+
+        function getRndInteger(min, max) {
+            return Math.floor(Math.random() * (max - min)) + min;
+        }
+
+        function getNewText() {
+            var index = -1;
+            var count = 0
+            while (count < data.length) {
+                var i = getRndInteger(0, data.length)
+                if (!usedTexts.includes(i)) {
+                    index = i
+                    usedTexts.push(i)
+                    break
+                }
+                count++
+            }
+
+            if (index < 0)
+                return null
+
+            var text = data[index]
+
+            console.log("new text " + text + " from index " + index)
+            return text
+        }
+
+        function runNewText(text) {
+            runningTexts[text] = {
+                "x": 0,
+                "y": getRndInteger(0, c.height),
+                color: textcolor1
+            }
+        }
+
+        function updatePos(step, max) {
+            Object.keys(runningTexts).forEach(function (key) {
+                console.log(key, runningTexts[key]);
+
+                runningTexts[key].x = runningTexts[key].x + step
+                if (runningTexts[key].x > max) {
+                    console.log("missed " + key)
+                    missedTexts[key] = runningTexts[key]
+                    delete runningTexts[key]
+                }
+            });
+        }
+
+        function drawGameOver() {
+            var ctx = c.getContext("2d");
+            ctx.textAlign = "center";
+            ctx.textBaseline = 'middle';
+            ctx.font = "50px Arial";
+            ctx.fillStyle = "#fff";
+            ctx.fillText("Game Over " + updateStats(), c.width / 2, c.height / 2);
+        }
+
+        function drawText(ctx, text, color, px, py) {
+            console.log("drawtext " + text + " at " + px + "," + py)
+            ctx.font = "20px Arial";
+            ctx.fillStyle = color;
+            ctx.fillText(text, px, py);
+        }
+
+        function drawTexts(canvas) {
+            var ctx = canvas.getContext("2d");
+            Object.keys(runningTexts).forEach(function (key) {
+                var text = runningTexts[key]
+                drawText(ctx, key, text.color, text.x, text.y)
+            });
+        }
+
+        function catchText(text) {
+            var t = runningTexts[text]
+            if (t == undefined)
+                return false
+
+            console.log("caught " + text)
+            caughtTexts[text] = t
+            delete runningTexts[text]
+            return true
+        }
+
+        function updateStats() {
+            var m = Object.keys(missedTexts).length
+            var c = Object.keys(caughtTexts).length
+            statsnode.innerHTML = "C:" + c + " M:" + m
+            return "C:" + c + " M:" + m
+        }
+
+        function run() {
+            console.log("RUN (" + c.width + "," + c.height + ")")
+
+            if (!finished &&
+                (frameTime % 10 == 0 || Object.keys(runningTexts).length <= 0)) {
+                text = getNewText()
+                if (text == null) {
+                    finished = true;
+                } else {
+                    runNewText(text)
+                }
+                frameTime = 0
+            }
+
+            frameTime++
+            updatePos(50, c.width)
+
+            clearBoard(c)
+            if (Object.keys(runningTexts).length == 0) {
+                drawGameOver()
+                stopGame()
+            } else {
+                drawTexts(c)
+            }
+
+            updateStats()
+        }
+
+        function stopGame() {
+            clearInterval(timer)
+            buttonnode.innerHTML = "start"
+            buttonnode.classList.replace("stop", "start")
+            started = false
+        }
+
+        function reset() {
+
+            if (started == false) {
+                initGame()
+                timer = setInterval(run, 1000)
+                buttonnode.innerHTML = "Stop"
+                buttonnode.classList.replace("start", "stop")
+                inputnode.value = ""
+                inputnode.focus()
+                started = true
+            } else {
+                stopGame()
+            }
+
+            clearBoard(c)
+        }
+
+        function clearBoard(canvas) {
+            var ctx = canvas.getContext("2d");
+            ctx.fillStyle = fillcolor;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
+
+        const c = document.getElementById("myCanvas");
+        c.width = c.clientWidth;
+        c.height = c.clientHeight * 3.5;
+        clearBoard(c)
+
+        const inputnode = document.getElementById("myInput");
+        inputnode.addEventListener("keydown", function (event) {
+            console.log(event)
+            console.log(inputnode.value)
+            if (event.key === "Enter") {
+                event.preventDefault();
+
+                if (catchText(inputnode.value))
+                    inputnode.value = ""
+
+            }
+        });
+
+        const statsnode = document.getElementById("statstext");
+        const buttonnode = document.getElementById("resetbutton");
+
+        initGame()
+
+        const data = [
+            "the", "and", "for", "are", "but", "not", "you", "all", "any", "can", "had", "her",
+            "was", "one", "our", "out", "day", "get", "has", "him", "his", "how", "man", "new",
+            "now", "old", "see", "two", "way", "who", "boy", "did", "its", "let", "put", "say",
+            "she", "too", "use"];
+
+
+    </script>
+
+</body>
+
+</html>
