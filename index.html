@@ -83,6 +83,11 @@
                 <option value="-1">Random</option>
             </select>
         </div>
+        <div id="meaning">
+            <br>
+            <span>Meanings:</span>
+            <br>
+        </div>
     </div>
 
 
@@ -154,12 +159,16 @@
         }
 
         function runNewText(text) {
+            var size = getRndInteger(20, 45)
             runningTexts[text] = {
+                "text": text,
                 "x": 20,
-                "y": getRndInteger(0, c.height - 20),
-                "size": getRndInteger(20, 45) + "px",
-                color: textcolor1
+                "y": getRndInteger(5 + size, c.height - size - 5),
+                "size": size + "px",
+                "color": textcolor1
             }
+
+            loadMeaning(runningTexts[text])
         }
 
         function moveObject(key, object, step, max) {
@@ -288,6 +297,25 @@
             ctx.fillRect(0, 0, canvas.width, canvas.height);
         }
 
+        function loadMeaning(text) {
+            var xhttp = new XMLHttpRequest();
+            xhttp.onreadystatechange = function () {
+                if (this.readyState == 4 && this.status == 200) {
+                    var meaningnode = document.getElementById("meaning")
+                    console.log(this.responseText)
+                    try {
+                        var obj = JSON.parse(this.responseText)
+                        if (obj != undefined) {
+                            text.meaning = obj
+                            meaningnode.innerHTML = meaningnode.innerHTML + "<br><span>" + text.text + " - " + obj[0].meaning.noun[0].definition + "</span>"
+                        }
+                    } catch { }
+
+                }
+            };
+            xhttp.open("GET", "https://api.dictionaryapi.dev/api/v1/entries/en/" + text.text, true);
+            xhttp.send();
+        }
 
         const c = document.getElementById("myCanvas");
         c.width = c.clientWidth;
