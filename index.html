@@ -90,10 +90,11 @@
 
         const fillcolor = "#333";
         const textcolor1 = "#fff";
-        var pos = 0;
 
-        var speed = 20
-        var interval = 10
+        const speed = 5
+        const interval = 50
+        const timerInterval = 200
+
         var frameTime = 0
         var started = false;
         var finished = false;
@@ -148,7 +149,7 @@
 
             var text = data[index]
 
-            console.log("new text " + text + " from index " + index)
+            //console.log("new text " + text + " from index " + index)
             return text
         }
 
@@ -156,19 +157,33 @@
             runningTexts[text] = {
                 "x": 20,
                 "y": getRndInteger(0, c.height - 20),
+                "size": getRndInteger(20, 45) + "px",
                 color: textcolor1
             }
         }
 
+        function moveObject(key, object, step, max) {
+            object.x = object.x + step
+            if (object.x > max) {
+                console.log("missed " + key)
+                missedTexts[key] = runningTexts[key]
+                delete runningTexts[key]
+                return false
+            }
+            return true
+        }
+
+        function colorObject(key, object, max) {
+            var p = (object.x * 120.0) / max
+            object.color = 'hsl(' + Math.floor(128 - p) + ',100%,50%)'
+            //console.log("new color for " + key + " = " + object.color)
+        }
+
         function updatePos(step, max) {
             Object.keys(runningTexts).forEach(function (key) {
-                console.log(key, runningTexts[key]);
-
-                runningTexts[key].x = runningTexts[key].x + step
-                if (runningTexts[key].x > max) {
-                    console.log("missed " + key)
-                    missedTexts[key] = runningTexts[key]
-                    delete runningTexts[key]
+                //console.log(key, runningTexts[key]);
+                if (moveObject(key, runningTexts[key], step, max)) {
+                    colorObject(key, runningTexts[key], max)
                 }
             });
         }
@@ -182,9 +197,9 @@
             ctx.fillText("Game Over " + updateStats(), c.width / 2, c.height / 2);
         }
 
-        function drawText(ctx, text, color, px, py) {
-            console.log("drawtext " + text + " at " + px + "," + py)
-            ctx.font = "20px Arial";
+        function drawText(ctx, text, color, size, px, py) {
+            //console.log("drawtext " + text + " at " + px + "," + py + " size=" + size)
+            ctx.font = size + " Arial";
             ctx.fillStyle = color;
             ctx.fillText(text, px, py);
         }
@@ -193,7 +208,7 @@
             var ctx = canvas.getContext("2d");
             Object.keys(runningTexts).forEach(function (key) {
                 var text = runningTexts[key]
-                drawText(ctx, key, text.color, text.x, text.y)
+                drawText(ctx, key, text.color, text.size, text.x, text.y)
             });
         }
 
@@ -254,7 +269,7 @@
 
             if (started == false) {
                 initGame()
-                timer = setInterval(run, 250)
+                timer = setInterval(run, timerInterval)
                 buttonnode.innerHTML = "Stop"
                 buttonnode.classList.replace("start", "stop")
                 inputnode.value = ""
